@@ -44,3 +44,6 @@ number += 120
 print("number =", number)
 
 
+print("추가했다 이부분")
+print("추가했다 이부분")
+print("추가했다 이부분")
