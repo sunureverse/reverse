@@ -10,6 +10,27 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+# Cloudflare's published proxy ranges: https://www.cloudflare.com/ips/
+# Used only for Render deployments; never trust an arbitrary forwarded header.
+CLOUDFLARE_PROXIES = tuple(ipaddress.ip_network(value) for value in (
+    '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22',
+    '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+    '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22',
+    '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+    '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+    '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
+    '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29',
+    '2c0f:f248::/32',
+))
+
+
+def proxy_networks(configured, render=False):
+    networks = tuple(ipaddress.ip_network(value.strip()) for value in configured.split(',') if value.strip())
+    if render:
+        networks += tuple(ipaddress.ip_network(value) for value in ('127.0.0.1/32', '::1/128', '10.0.0.0/8'))
+        networks += CLOUDFLARE_PROXIES
+    return networks
+
 
 def korean_time(value):
     return datetime.fromisoformat(value).astimezone(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
@@ -95,7 +116,7 @@ def page(title, body):
 
 
 if __name__ == '__main__':
-    networks = tuple(ipaddress.ip_network(value.strip()) for value in os.environ.get('TRUSTED_PROXIES', '').split(',') if value.strip())
+    networks = proxy_networks(os.environ.get('TRUSTED_PROXIES', ''), render=os.environ.get('RENDER', '').lower() == 'true')
     server = make_server(os.environ.get('HOST', '127.0.0.1'), int(os.environ.get('PORT', '8000')), os.environ.get('ADMIN_PASSWORD', ''), os.environ.get('VISITOR_DB', '/workspace/visitor-site-data/visits.sqlite3'), networks)
     print('Visitor site started', flush=True)
     server.serve_forever()
