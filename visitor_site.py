@@ -11,6 +11,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
+def korean_time(value):
+    return datetime.fromisoformat(value).astimezone(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+
+
 def visitor_ip(peer, forwarded, trusted):
     address = ipaddress.ip_address(peer)
     if not any(address in network for network in trusted):
@@ -70,8 +74,8 @@ def make_server(host, port, password, database, trusted=()):
                     return
                 with sqlite3.connect(database) as db:
                     rows = db.execute('SELECT time, ip FROM visits ORDER BY id DESC LIMIT 500').fetchall()
-                table = ''.join('<tr><td>' + html.escape(t) + '</td><td>' + html.escape(ip) + '</td></tr>' for t, ip in rows)
-                self.respond(200, page('방문 기록', '<p>최근 30일 기록 중 최신 500건 · 시간은 UTC 기준입니다.</p><table><tr><th>접속 시간</th><th>IP 주소</th></tr>' + table + '</table>'))
+                table = ''.join('<tr><td>' + korean_time(t) + '</td><td>' + html.escape(ip) + '</td></tr>' for t, ip in rows)
+                self.respond(200, page('방문 기록', '<p>최근 30일 기록 중 최신 500건 · 시간은 한국 시간(KST, UTC+9) 기준입니다.</p><table><tr><th>접속 시간</th><th>IP 주소</th></tr>' + table + '</table>'))
                 return
             if path != '/':
                 self.respond(404, '페이지를 찾을 수 없습니다.')

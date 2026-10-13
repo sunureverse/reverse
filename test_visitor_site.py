@@ -6,10 +6,13 @@ import threading
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-from visitor_site import make_server, visitor_ip
+from visitor_site import make_server, visitor_ip, korean_time
 
 
 class SiteTest(unittest.TestCase):
+    def test_korean_time(self):
+        self.assertEqual(korean_time('2026-10-14T18:30:00+00:00'), '2026-10-15 03:30:00')
+
     def test_logging_and_access(self):
         with tempfile.TemporaryDirectory() as directory:
             database = directory + '/visits.db'
