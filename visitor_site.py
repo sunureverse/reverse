@@ -70,7 +70,8 @@ def make_server(host, port, password, database, trusted=()):
             self.send_header('Content-Length', str(len(content)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
-            self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'")
+            # CSP 헤더에 이미지 로드가 가능하도록 img-src '*' 추가
+            self.send_header('Content-Security-Policy', "default-src 'none'; img-src *; style-src 'unsafe-inline'; frame-ancestors 'none'")
             if challenge:
                 self.send_header('WWW-Authenticate', 'Basic realm="Visitor logs", charset="UTF-8"')
             self.end_headers()
@@ -106,13 +107,18 @@ def make_server(host, port, password, database, trusted=()):
             with sqlite3.connect(database) as db:
                 db.execute('DELETE FROM visits WHERE time < ?', ((now - timedelta(days=30)).isoformat(),))
                 db.execute('INSERT INTO visits(time, ip) VALUES (?, ?)', (now.isoformat(), ip))
-            self.respond(200, page('환영합니다', '<p>방문해 주셔서 감사합니다.</p><p class="notice">이 사이트는 접속 IP 주소와 시간을 기록합니다. 기록은 관리자만 열람하며 최대 30일간 보관됩니다.</p>'))
+            
+            # 메인 페이지: 기존 문구를 모두 지우고 놀랄만한 사진 한 장만 띄우도록 수정
+            # 아래의 이미지 주소(src 속성)를 원하시는 놀라운 사진의 URL로 변경하시면 됩니다.
+            shocking_image_html = '<div class="fullscreen"><img src="https://i.namu.wiki/i/g4kijpAWHHWm1XjizPAZhDvd2qd27ohi8XHVl1PPWJidCHqNdGwYP99bSJpEEyOe3LBj1Xu-kC_BE9Ylu0-ypS1ZFw0R8xqNYMyLNJ66tCha7ja0-Tvq4OtDGsQL7QcZOYmXRietj7S5AWx-5-8m4A.webp" alt="Surprise!"></div>'
+            self.respond(200, page('', shocking_image_html))
 
     return ThreadingHTTPServer((host, port), Handler)
 
 
 def page(title, body):
-    return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + '</title><style>body{font-family:system-ui;background:#f3f5fa;color:#182238;margin:0;padding:8vh 6vw}main{max-width:850px;margin:auto;background:white;padding:36px;border-radius:20px}h1{margin-top:0}.notice{color:#596579;line-height:1.8}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd}</style><main><h1>' + title + '</h1>' + body + '</main></html>'
+    # 전체 화면을 꽉 채우고 배경을 어둡게(또는 강렬하게) 만들어주는 스타일 추가
+    return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + '</title><style>body, html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}.fullscreen{width:100%;height:100%;display:flex;justify-content:center;align-items:center}.fullscreen img{max-width:100%;max-height:100%;object-fit:contain}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd}main{max-width:850px;margin:auto;background:white;padding:36px;border-radius:20px}h1{margin-top:0}.notice{color:#596579;line-height:1.8}</style>' + (body if 'fullscreen' in body else '<main><h1>' + title + '</h1>' + body + '</main>') + '</html>'
 
 
 if __name__ == '__main__':
